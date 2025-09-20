@@ -19,6 +19,10 @@ jobs:
           set -e
           if [ -n "${{ secrets.DISCORD_TOKEN }}" ]; then railway variables set DISCORD_TOKEN "${{ secrets.DISCORD_TOKEN }}"; fi
           if [ -n "${{ vars.DISCORD_CHANNEL_ID }}" ]; then railway variables set DISCORD_CHANNEL_ID "${{ vars.DISCORD_CHANNEL_ID }}"; fi
+          if [ -n "${{ vars.DISCORD_SERVER_NAME }}" ]; then railway variables set DISCORD_SERVER_NAME "${{ vars.DISCORD_SERVER_NAME }}"; fi
+          if [ -n "${{ vars.DISCORD_CHANNEL_NAME }}" ]; then railway variables set DISCORD_CHANNEL_NAME "${{ vars.DISCORD_CHANNEL_NAME }}"; fi
+          if [ -n "${{ vars.NOTIFY_ON_START }}" ]; then railway variables set NOTIFY_ON_START "${{ vars.NOTIFY_ON_START }}"; fi
+          if [ -n "${{ vars.NOTIFY_MESSAGE }}" ]; then railway variables set NOTIFY_MESSAGE "${{ vars.NOTIFY_MESSAGE }}"; fi
           if [ -n "${{ vars.SSE_URL }}" ]; then railway variables set SSE_URL "${{ vars.SSE_URL }}"; fi
           if [ -n "${{ vars.MCP_HTTP_URL }}" ]; then railway variables set MCP_HTTP_URL "${{ vars.MCP_HTTP_URL }}"; fi
           if [ -n "${{ secrets.MCP_API_KEY }}" ]; then railway variables set MCP_API_KEY "${{ secrets.MCP_API_KEY }}"; fi
