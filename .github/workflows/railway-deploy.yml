@@ -1,0 +1,26 @@
+name: Deploy to Railway (bridge)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      SERVICE: ${{ vars.RAILWAY_SERVICE || vars.RAILWAY_SERVICE_NAME || 'discord-mcp-sse-bridge' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync variables to Railway (if provided)
+        run: |
+          set -e
+          if [ -n "${{ secrets.DISCORD_TOKEN }}" ]; then railway variables set DISCORD_TOKEN "${{ secrets.DISCORD_TOKEN }}"; fi
+          if [ -n "${{ vars.DISCORD_CHANNEL_ID }}" ]; then railway variables set DISCORD_CHANNEL_ID "${{ vars.DISCORD_CHANNEL_ID }}"; fi
+          if [ -n "${{ vars.SSE_URL }}" ]; then railway variables set SSE_URL "${{ vars.SSE_URL }}"; fi
+          if [ -n "${{ vars.MCP_HTTP_URL }}" ]; then railway variables set MCP_HTTP_URL "${{ vars.MCP_HTTP_URL }}"; fi
+          if [ -n "${{ secrets.MCP_API_KEY }}" ]; then railway variables set MCP_API_KEY "${{ secrets.MCP_API_KEY }}"; fi
+      - name: Deploy
+        run: railway up --service="$SERVICE"
