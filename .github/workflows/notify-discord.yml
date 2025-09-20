@@ -6,7 +6,7 @@ on:
       message:
         description: Message to send to Discord
         required: false
-        default: "v letter check-in ✅"
+        default: "v letter"
 
 jobs:
   notify:
@@ -24,7 +24,7 @@ jobs:
           fi
           python3 - << 'PY'
 import json, os, urllib.request
-TOKEN=os.environ['TOKEN']; CHANNEL_ID=os.environ['CHANNEL_ID']; MSG=os.environ.get('MESSAGE') or 'v letter check-in ✅'
+TOKEN=os.environ['TOKEN']; CHANNEL_ID=os.environ['CHANNEL_ID']; MSG=os.environ.get('MESSAGE') or 'v letter'
 req=urllib.request.Request(f'https://discord.com/api/v10/channels/{CHANNEL_ID}/messages',
   data=json.dumps({'content': MSG}).encode(),
   headers={'Authorization': f'Bot {TOKEN}','Content-Type':'application/json'})
