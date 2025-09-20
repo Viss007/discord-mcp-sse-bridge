@@ -14,33 +14,54 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send message to Discord channel
+      - name: Prepare message
+        id: prep
+        run: |
+          set -e
+          MSG="${{ github.event.inputs.message }}"
+          if [ -z "$MSG" ] && [ -f "$GITHUB_EVENT_PATH" ]; then
+            MSG=$(python3 - << 'PY'
+import json, os
+try:
+  with open(os.environ['GITHUB_EVENT_PATH'],'r') as f: evt=json.load(f)
+  print(evt.get('head_commit',{}).get('message',''))
+except Exception:
+  print('')
+PY
+)
+          fi
+          if [ -z "$MSG" ]; then MSG="v letter"; fi
+          echo "message=$MSG" >> $GITHUB_OUTPUT
+
+      - name: Send via Webhook if present
+        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MESSAGE: ${{ steps.prep.outputs.message }}
+        run: |
+          python3 - << 'PY'
+import json, os, urllib.request
+webhook=os.environ['WEBHOOK']; message=os.environ.get('MESSAGE') or 'v letter'
+req=urllib.request.Request(webhook, data=json.dumps({'content': message}).encode(), headers={'Content-Type':'application/json'})
+print(urllib.request.urlopen(req).read().decode())
+PY
+
+      - name: Send via Bot token (fallback)
+        if: ${{ secrets.DISCORD_WEBHOOK_URL == '' }}
         env:
           TOKEN: ${{ secrets.DISCORD_TOKEN }}
           CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
-          MESSAGE: ${{ github.event.inputs.message }}
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          MESSAGE: ${{ steps.prep.outputs.message }}
         run: |
           set -e
           if [ -z "$TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
             echo "Missing TOKEN or CHANNEL_ID"; exit 1;
           fi
           python3 - << 'PY'
-import json, os, urllib.request, pathlib
-TOKEN=os.environ['TOKEN']; CHANNEL_ID=os.environ['CHANNEL_ID']
-msg=os.environ.get('MESSAGE')
-if not msg:
-    evt_path=os.environ.get('GITHUB_EVENT_PATH')
-    if evt_path and pathlib.Path(evt_path).exists():
-        try:
-            with open(evt_path,'r') as f: evt=json.load(f)
-            msg=evt.get('head_commit',{}).get('message') or 'v letter'
-        except Exception:
-            msg='v letter'
-    else:
-        msg='v letter'
+import json, os, urllib.request
+TOKEN=os.environ['TOKEN']; CHANNEL_ID=os.environ['CHANNEL_ID']; MSG=os.environ.get('MESSAGE') or 'v letter'
 req=urllib.request.Request(f'https://discord.com/api/v10/channels/{CHANNEL_ID}/messages',
-  data=json.dumps({'content': msg}).encode(),
+  data=json.dumps({'content': MSG}).encode(),
   headers={'Authorization': f'Bot {TOKEN}','Content-Type':'application/json'})
 print(urllib.request.urlopen(req).read().decode())
 PY
