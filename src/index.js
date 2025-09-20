@@ -5,18 +5,22 @@ import http from 'http'
 
 const {
   DISCORD_TOKEN,
-  DISCORD_CHANNEL_ID,
+  DISCORD_CHANNEL_ID,            // preferred if present
+  DISCORD_SERVER_NAME,           // optional fallback
+  DISCORD_CHANNEL_NAME,          // optional fallback
   SSE_URL,
   MCP_HTTP_URL,
-  MCP_API_KEY
+  MCP_API_KEY,
+  NOTIFY_ON_START,               // 'true' to send a boot message
+  NOTIFY_MESSAGE                 // optional message on boot
 } = process.env
 
-if (!DISCORD_TOKEN || !DISCORD_CHANNEL_ID || !SSE_URL) {
-  console.error('Missing env vars: DISCORD_TOKEN, DISCORD_CHANNEL_ID, SSE_URL')
+if (!DISCORD_TOKEN || !SSE_URL) {
+  console.error('Missing env vars: DISCORD_TOKEN, SSE_URL')
   process.exit(1)
 }
 
-// Minimal health server so Railway can treat this as web if needed
+// Health server so Railway can keep this running as Web if desired
 const PORT = process.env.PORT || 8080
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' })
@@ -32,30 +36,35 @@ const client = new Client({
   partials: [Partials.Channel]
 })
 
-async function getChannel() {
-  try {
-    const ch = await client.channels.fetch(DISCORD_CHANNEL_ID)
-    if (!ch || !ch.isTextBased()) throw new Error('Channel not text-based or not found')
-    return ch
-  } catch (e) {
-    console.error('Channel fetch failed:', e)
-    return null
+async function resolveTextChannel() {
+  // 1) Try by channel ID
+  if (DISCORD_CHANNEL_ID) {
+    const byId = await client.channels.fetch(DISCORD_CHANNEL_ID).catch(() => null)
+    if (byId?.isTextBased()) return byId
   }
+  // 2) Fallback by server + channel name
+  if (DISCORD_SERVER_NAME && DISCORD_CHANNEL_NAME) {
+    const guilds = await client.guilds.fetch()
+    const g = guilds.find(g => g.name === DISCORD_SERVER_NAME)
+    if (g) {
+      const guild = await g.fetch()
+      const chans = await guild.channels.fetch()
+      const byName = chans.find(c => c?.name === DISCORD_CHANNEL_NAME && c?.isTextBased())
+      if (byName) return byName
+    }
+  }
+  return null
 }
 
 function startSSE() {
-  const es = new EventSource(SSE_URL, {
-    headers: { Accept: 'text/event-stream', 'Cache-Control': 'no-cache' }
-  })
-
+  const es = new EventSource(SSE_URL, { headers: { Accept: 'text/event-stream', 'Cache-Control': 'no-cache' } })
   es.onmessage = async (evt) => {
-    const ch = await getChannel()
+    const ch = await resolveTextChannel()
     if (!ch) return
     const msg = (evt?.data ?? '').toString()
     if (!msg) return
     await ch.send(msg.slice(0, 1800))
   }
-
   es.onerror = (e) => {
     console.warn('SSE error; attempting to continue:', e?.status || e)
   }
@@ -91,6 +100,11 @@ client.on('messageCreate', async (message) => {
 
 client.once('ready', async () => {
   console.log('Bot ready as', client.user.tag)
+  // Optional boot notification
+  if ((NOTIFY_ON_START || '').toLowerCase() === 'true') {
+    const ch = await resolveTextChannel()
+    if (ch) await ch.send(NOTIFY_MESSAGE || 'Bridge deployed')
+  }
   startSSE()
 })
 
