@@ -11,7 +11,7 @@ jobs:
     container: ghcr.io/railwayapp/cli:latest
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      SERVICE: ${{ vars.RAILWAY_SERVICE || vars.RAILWAY_SERVICE_NAME || 'discord-mcp-sse-bridge' }}
+      SERVICE: ${{ vars.RAILWAY_SERVICE_ID || vars.RAILWAY_SERVICE_NAME || 'discord-mcp-sse-bridge' }}
     steps:
       - uses: actions/checkout@v4
       - name: Sync variables to Railway (if provided)
