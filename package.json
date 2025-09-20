@@ -1,1 +1,14 @@
-{"name":"discord-mcp-sse-bridge","scripts":{"start":"node src/index.js"}}
+{
+  "name": "discord-mcp-sse-bridge",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node src/index.js" },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "eventsource": "^2.0.2",
+    "dotenv": "^16.4.5"
+  }
+}
