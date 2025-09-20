@@ -1,0 +1,33 @@
+name: Notify Discord (bot)
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: Message to send to Discord
+        required: false
+        default: "v letter check-in ✅"
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Discord channel
+        env:
+          TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
+          MESSAGE: ${{ github.event.inputs.message }}
+        run: |
+          set -e
+          if [ -z "$TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
+            echo "Missing TOKEN or CHANNEL_ID"; exit 1;
+          fi
+          python3 - << 'PY'
+import json, os, urllib.request
+TOKEN=os.environ['TOKEN']; CHANNEL_ID=os.environ['CHANNEL_ID']; MSG=os.environ.get('MESSAGE') or 'v letter check-in ✅'
+req=urllib.request.Request(f'https://discord.com/api/v10/channels/{CHANNEL_ID}/messages',
+  data=json.dumps({'content': MSG}).encode(),
+  headers={'Authorization': f'Bot {TOKEN}','Content-Type':'application/json'})
+print(urllib.request.urlopen(req).read().decode())
+PY
+
